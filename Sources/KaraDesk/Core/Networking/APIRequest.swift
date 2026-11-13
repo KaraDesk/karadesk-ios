@@ -4,6 +4,8 @@ struct APIRequest<Response: Decodable & Sendable>: Sendable {
     enum Method: String, Sendable {
         case get = "GET"
         case post = "POST"
+        case put = "PUT"
+        case delete = "DELETE"
     }
 
     var method: Method
@@ -138,5 +140,24 @@ extension APIRequest where Response == Page<HelpArticleSummary> {
 extension APIRequest where Response == HelpArticle {
     static func article(helpCenterID: Int, articleID: Int) -> Self {
         APIRequest(method: .get, path: "/v1/public/help-centers/\(helpCenterID)/articles/\(articleID)", requiresSession: false)
+    }
+}
+
+struct PushTokenInput: Encodable, Sendable {
+    var token: String
+    var environment: String
+}
+
+struct PushTokenResult: Decodable, Sendable {
+    var token: String
+}
+
+extension APIRequest where Response == PushTokenResult {
+    static func registerPushToken(_ input: PushTokenInput) -> Self {
+        APIRequest(method: .put, path: "/v1/messenger/push-token", body: input)
+    }
+
+    static func removePushToken(_ token: String) -> Self {
+        APIRequest(method: .delete, path: "/v1/messenger/push-token/\(token)")
     }
 }

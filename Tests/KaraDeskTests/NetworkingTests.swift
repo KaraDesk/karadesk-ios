@@ -44,7 +44,7 @@ struct NetworkingTests {
             appId: "app",
             visitorId: "ios-visitor-1",
             userId: "u1",
-            device: .init(os: "iOS", osVersion: "26.1", deviceModel: "iPhone17,1", appVersion: "2.0 (5)", sdkVersion: "0.2.0", language: "en-US", timezone: "UTC")
+            device: .init(os: "iOS", osVersion: "26.1", deviceModel: "iPhone17,1", appVersion: "2.0 (5)", sdkVersion: "0.3.0", language: "en-US", timezone: "UTC")
         )
         let request = try client.makeURLRequest(.boot(boot), token: nil)
         let body = try #require(request.httpBody)
@@ -56,7 +56,7 @@ struct NetworkingTests {
         #expect(json["email"] == nil)
         #expect(device["device_model"] == "iPhone17,1")
         #expect(device["app_version"] == "2.0 (5)")
-        #expect(device["sdk_version"] == "0.2.0")
+        #expect(device["sdk_version"] == "0.3.0")
     }
 
     @Test func errorsMapToKaraDeskErrors() {

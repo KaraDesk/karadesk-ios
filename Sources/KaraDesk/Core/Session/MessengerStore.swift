@@ -36,6 +36,9 @@ final class MessengerStore {
     @ObservationIgnored private let identity: IdentityStore
     @ObservationIgnored private let deviceProvider: @MainActor () -> BootRequest.Device
     @ObservationIgnored private var bootTask: Task<BootResponse, any Error>?
+    @ObservationIgnored private var pushToken: String?
+    @ObservationIgnored private var pushRegisteredSession: String?
+    @ObservationIgnored private var pushUnregister: Task<Void, Never>?
     @ObservationIgnored private var realtime: RealtimeConnection?
     @ObservationIgnored private var realtimeTask: Task<Void, Never>?
     @ObservationIgnored private var lastUnreadCount = 0
@@ -104,6 +107,7 @@ final class MessengerStore {
     }
 
     func logout() {
+        unregisterPushToken()
         identity.setUser(nil)
         identity.rotateVisitorID()
         user = nil
@@ -206,6 +210,7 @@ final class MessengerStore {
             phase = .ready
             connectRealtime(token: response.token)
             Log.session.debug("Messenger session started")
+            Task { await registerPushToken() }
             return response
         } catch {
             if generation == self.generation {
@@ -317,7 +322,78 @@ final class MessengerStore {
         }
     }
 
+    // MARK: Push
+
+    func setPushToken(_ token: String) {
+        guard token != pushToken else {
+            return
+        }
+
+        pushToken = token
+        pushRegisteredSession = nil
+
+        Task { await registerPushToken() }
+    }
+
+    func registerPushToken() async {
+        await pushUnregister?.value
+
+        guard let pushToken, let session = boot?.token, phase == .ready, pushRegisteredSession != session else {
+            return
+        }
+
+        pushRegisteredSession = session
+
+        do {
+            _ = try await client.send(
+                .registerPushToken(PushTokenInput(token: pushToken, environment: PushEnvironment.current.rawValue)),
+                token: session
+            )
+            Log.session.debug("Registered for push notifications")
+        } catch {
+            if pushRegisteredSession == session {
+                pushRegisteredSession = nil
+            }
+            Log.session.error("Couldn't register for push notifications: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func unregisterPushToken() {
+        guard let pushToken, let session = boot?.token else {
+            return
+        }
+
+        pushRegisteredSession = nil
+
+        let client = client
+        let previous = pushUnregister
+
+        pushUnregister = Task {
+            await previous?.value
+            _ = try? await client.send(.removePushToken(pushToken), token: session)
+        }
+    }
+
     // MARK: Realtime
+
+    func suspendRealtime() {
+        realtimeTask?.cancel()
+        realtimeTask = nil
+
+        if let realtime {
+            Task { await realtime.stop() }
+        }
+
+        realtime = nil
+    }
+
+    func resumeRealtime() async {
+        guard phase == .ready, realtime == nil, let response = try? await session(), realtime == nil else {
+            return
+        }
+
+        connectRealtime(token: response.token)
+    }
 
     private func connectRealtime(token: String) {
         realtimeTask?.cancel()

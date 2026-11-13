@@ -2,6 +2,11 @@
 
 All notable changes to the KaraDesk iOS SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 0.3.0
+
+- Push notifications. Pass the APNs device token to `KaraDesk.setDeviceToken(_:)` and add your APNs key in KaraDesk under Settings → Apps, and your users get a push when your team replies while they're away. `KaraDesk.handlePush(_:)` opens the conversation from a notification, and `KaraDesk.presentationOptions(for:)` hides it while the messenger is already open.
+- The messenger disconnects from live updates while your app is in the background and reconnects when it returns, so replies arrive as push notifications instead.
+
 ## 0.2.0
 
 - New replies show a preview card at the bottom of your app while the messenger is closed, and when someone opens your app with a reply waiting. Tap it to open the conversation, or turn it off with `KaraDesk.showsInAppMessages = false`.

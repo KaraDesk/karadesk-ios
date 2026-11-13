@@ -28,6 +28,7 @@ public enum KaraDesk {
 
     static private(set) var store: MessengerStore?
     private static var foregroundObserver: (any NSObjectProtocol)?
+    private static var backgroundObserver: (any NSObjectProtocol)?
 
     /// Connects the SDK to your KaraDesk space.
     ///
@@ -107,11 +108,28 @@ public enum KaraDesk {
                 guard let store = KaraDesk.store else {
                     return
                 }
-                Task { await store.refreshAndAnnounce() }
+                Task {
+                    await store.resumeRealtime()
+                    await store.refreshAndAnnounce()
+                }
+            }
+        }
+
+        backgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                KaraDesk.store?.suspendRealtime()
             }
         }
 
         self.store = store
+
+        if let pendingPushToken {
+            store.setPushToken(pendingPushToken)
+        }
 
         Task {
             try? await store.start()

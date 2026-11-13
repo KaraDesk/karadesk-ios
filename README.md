@@ -26,7 +26,7 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/KaraDesk/karadesk-ios", from: "0.2.0"),
+    .package(url: "https://github.com/KaraDesk/karadesk-ios", from: "0.3.0"),
 ],
 targets: [
     .target(name: "YourApp", dependencies: [
@@ -191,6 +191,58 @@ When your team replies while the messenger is closed, a preview card slides up f
 KaraDesk.showsInAppMessages = false
 ```
 
+## Push notifications
+
+KaraDesk can send a push notification when your team replies while the user is away from your app. Tapping it opens the conversation.
+
+### 1. Add your APNs key to KaraDesk
+
+In your Apple Developer account, open Certificates, Identifiers & Profiles → Keys and create a key with Apple Push Notifications service (APNs) enabled. Download the `.p8` file.
+
+In KaraDesk, open Settings → Apps, choose your iOS app and add the key under Push notifications with its Key ID, your Team ID and your app's bundle ID. KaraDesk checks the key with Apple before saving it.
+
+### 2. Turn on push notifications in your app
+
+In Xcode, add the Push Notifications capability to your app target.
+
+### 3. Pass the device token to KaraDesk
+
+KaraDesk never asks for notification permission itself. Ask when it makes sense in your app, register with APNs, and pass the token along:
+
+```swift
+func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    KaraDesk.setDeviceToken(deviceToken)
+}
+```
+
+KaraDesk keeps the token linked to whoever is signed in. It moves to the new user after `login`, and stops after `logout`.
+
+### 4. Open conversations from notifications
+
+In your `UNUserNotificationCenterDelegate`, let KaraDesk handle its own notifications:
+
+```swift
+func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    if KaraDesk.handlePush(response.notification.request.content.userInfo) {
+        return
+    }
+
+    // Handle your own notifications.
+}
+
+func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+    if let options = await KaraDesk.presentationOptions(for: notification.request.content.userInfo) {
+        return options
+    }
+
+    return [.banner, .list, .sound]
+}
+```
+
+`presentationOptions(for:)` hides the notification while the messenger is open, since the reply already shows there. Use `KaraDesk.isKaraDeskPush(_:)` anywhere else you need to tell KaraDesk notifications apart from your own.
+
+Debug builds from Xcode use Apple's sandbox push environment and App Store and TestFlight builds use production. KaraDesk detects this for you.
+
 ## Errors
 
 `login` and `updateUser` throw a `KaraDeskError`:
@@ -211,6 +263,7 @@ KaraDesk includes a privacy manifest (`PrivacyInfo.xcprivacy`) describing the da
 - The name, email, phone and user id you pass to `login`
 - Messages, photos and files your users send
 - Device model, iOS version, app version, language and time zone
+- The push token iOS gives your app, if you pass it to `setDeviceToken`
 
 Picking photos and files uses the system pickers, so your app doesn't need photo library or file access permissions.
 
