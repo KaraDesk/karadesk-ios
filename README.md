@@ -26,7 +26,7 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/KaraDesk/karadesk-ios", from: "0.1.0"),
+    .package(url: "https://github.com/KaraDesk/karadesk-ios", from: "0.2.0"),
 ],
 targets: [
     .target(name: "YourApp", dependencies: [
@@ -181,6 +181,14 @@ NotificationCenter.default.addObserver(
     let count = notification.userInfo?[KaraDesk.unreadConversationCountKey] as? Int ?? 0
     // Update your badge
 }
+```
+
+## In-app message previews
+
+When your team replies while the messenger is closed, a preview card slides up from the bottom of your app. Tapping it opens the conversation. To turn it off:
+
+```swift
+KaraDesk.showsInAppMessages = false
 ```
 
 ## Errors

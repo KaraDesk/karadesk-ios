@@ -2,6 +2,7 @@ import SwiftUI
 
 struct Theme: Equatable {
     var accent: Color
+    var tint: Color
     var onAccent: Color
     var headerForeground: Color
     var headerBackground: HeaderBackground
@@ -26,14 +27,16 @@ struct Theme: Equatable {
 
     static let standard = Theme(
         accent: Color(hex: "#111111") ?? .black,
+        tint: .primary,
         onAccent: .white,
         headerForeground: .white,
         headerBackground: .solid(Color(hex: "#111111") ?? .black),
         colorScheme: nil
     )
 
-    init(accent: Color, onAccent: Color, headerForeground: Color, headerBackground: HeaderBackground, colorScheme: ColorScheme?) {
+    init(accent: Color, tint: Color, onAccent: Color, headerForeground: Color, headerBackground: HeaderBackground, colorScheme: ColorScheme?) {
         self.accent = accent
+        self.tint = tint
         self.onAccent = onAccent
         self.headerForeground = headerForeground
         self.headerBackground = headerBackground
@@ -78,8 +81,18 @@ struct Theme: Equatable {
         case .system: nil
         }
 
+        let luminance = Color.luminance(hex: accentHex) ?? 0.5
+        let tint: Color = if dark, luminance < 0.12 {
+            .white
+        } else if !dark, luminance > 0.75 {
+            .black
+        } else {
+            accent
+        }
+
         self.init(
             accent: accent,
+            tint: tint,
             onAccent: Color.readableForeground(on: accentHex),
             headerForeground: headerForeground,
             headerBackground: header,
@@ -98,16 +111,23 @@ extension Color {
     }
 
     static func readableForeground(on hex: String) -> Color {
-        guard let rgb = rgb(hex: hex) else {
+        guard let luminance = luminance(hex: hex) else {
             return .white
+        }
+
+        return luminance > 0.45 ? .black : .white
+    }
+
+    static func luminance(hex: String) -> Double? {
+        guard let rgb = rgb(hex: hex) else {
+            return nil
         }
 
         func linear(_ value: Double) -> Double {
             value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
         }
 
-        let luminance = 0.2126 * linear(rgb.red) + 0.7152 * linear(rgb.green) + 0.0722 * linear(rgb.blue)
-        return luminance > 0.45 ? .black : .white
+        return 0.2126 * linear(rgb.red) + 0.7152 * linear(rgb.green) + 0.0722 * linear(rgb.blue)
     }
 
     private static func rgb(hex: String) -> (red: Double, green: Double, blue: Double)? {

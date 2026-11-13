@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// The entry point to the KaraDesk messenger.
 ///
@@ -18,10 +19,15 @@ public enum KaraDesk {
     /// The `userInfo` key holding the unread conversation count in ``unreadConversationCountDidChangeNotification``.
     public static let unreadConversationCountKey = "count"
 
+    /// Whether a preview card slides up from the bottom of your app when your team replies while
+    /// the messenger is closed. Tapping the card opens the conversation. Defaults to `true`.
+    public static var showsInAppMessages = true
+
     /// The version of the KaraDesk SDK.
     public nonisolated static let version = SDKVersion.current
 
     static private(set) var store: MessengerStore?
+    private static var foregroundObserver: (any NSObjectProtocol)?
 
     /// Connects the SDK to your KaraDesk space.
     ///
@@ -58,6 +64,51 @@ public enum KaraDesk {
                 object: nil,
                 userInfo: [unreadConversationCountKey: count]
             )
+        }
+
+        store.onIncomingMessage = { message in
+            guard showsInAppMessages else {
+                return
+            }
+
+            InAppMessageCenter.shared.show(message) { conversationID in
+                present(.conversation(id: conversationID))
+            }
+        }
+
+        store.onUnreadWaiting = { conversation, preview in
+            guard showsInAppMessages else {
+                return
+            }
+
+            let author = Message.Author(
+                kind: Message.Author.Kind(rawValue: preview.authorType.rawValue) ?? .user,
+                name: preview.authorName,
+                avatarURL: preview.authorType == .user ? conversation.assignee?.avatarURL : nil
+            )
+
+            InAppMessageCenter.shared.show(
+                id: preview.id,
+                conversationID: conversation.id,
+                author: author,
+                body: preview.body,
+                createdAt: preview.createdAt
+            ) { conversationID in
+                present(.conversation(id: conversationID))
+            }
+        }
+
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                guard let store = KaraDesk.store else {
+                    return
+                }
+                Task { await store.refreshAndAnnounce() }
+            }
         }
 
         self.store = store

@@ -46,8 +46,16 @@ struct MessengerView: View {
         }
         .environment(\.karaDeskTheme, theme)
         .environment(\.karaDeskClose, CloseAction(run: onClose))
-        .tint(theme.accent)
+        .tint(theme.tint)
         .preferredColorScheme(theme.colorScheme)
+        .background(InterfaceStyleOverride(colorScheme: theme.colorScheme))
+        .onAppear {
+            store.isMessengerVisible = true
+            InAppMessageCenter.shared.dismiss()
+        }
+        .onDisappear {
+            store.isMessengerVisible = false
+        }
     }
 
     private var theme: Theme {
@@ -213,14 +221,8 @@ extension View {
         }
     }
 
-    @ViewBuilder
     func prominentButton() -> some View {
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glassProminent)
-        } else {
-            buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-        }
+        modifier(ProminentButton())
     }
 
     @ViewBuilder
@@ -257,5 +259,24 @@ struct BareToolbarItem<Content: View>: ToolbarContent {
                 content()
             }
         }
+    }
+}
+
+private struct ProminentButton: ViewModifier {
+    @Environment(\.karaDeskTheme) private var theme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                content.buttonStyle(.glassProminent)
+            } else {
+                content
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+            }
+        }
+        .tint(theme.accent)
+        .foregroundStyle(theme.onAccent)
     }
 }

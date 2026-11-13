@@ -121,3 +121,30 @@ struct RichNode: Decodable, Sendable, Equatable {
         marks = container.decodeLossyArray(.marks)
     }
 }
+
+extension Array where Element == HelpCollection {
+    func withTotals() -> [HelpCollection] {
+        var totals: [Int: Int] = [:]
+
+        func total(_ collection: HelpCollection, _ seen: Set<Int>) -> Int {
+            if let known = totals[collection.id] {
+                return known
+            }
+
+            let path = seen.union([collection.id])
+            let sum = filter { $0.parentId == collection.id && !path.contains($0.id) }
+                .reduce(collection.articleCount) { $0 + total($1, path) }
+
+            totals[collection.id] = sum
+            return sum
+        }
+
+        return map { collection in
+            var copy = collection
+            copy.articleCount = total(collection, [])
+            return copy
+        }
+        .filter { $0.articleCount > 0 }
+        .sorted { ($0.position, $0.id) < ($1.position, $1.id) }
+    }
+}

@@ -35,7 +35,7 @@ struct HelpView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(helpCenter?.name ?? Strings.help)
+        .navigationTitle(Strings.help)
         .navigationBarTitleDisplayMode(.inline)
         .closeToolbar()
         .task(id: helpCenter?.id) {
@@ -54,33 +54,13 @@ struct HelpView: View {
         }
 
         ForEach(collections ?? []) { collection in
-            Button {
+            CollectionRow(collection: collection) {
                 guard let helpCenter else {
                     return
                 }
 
                 router.push(.collection(helpCenterID: helpCenter.id, collectionID: collection.id, title: collection.name))
-            } label: {
-                DisclosureRow {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(collection.name)
-                            .font(.body.weight(.medium))
-
-                    if let description = collection.description, !description.isEmpty {
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                        Text(Strings.articleCount(collection.articleCount))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.vertical, 4)
-                }
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -106,9 +86,7 @@ struct HelpView: View {
 
         do {
             let page = try await store.help(.collections(helpCenterID: helpCenter.id))
-            collections = page.data
-                .filter { $0.parentId == nil && $0.articleCount > 0 }
-                .sorted { $0.position < $1.position }
+            collections = page.data.withTotals().filter { $0.parentId == nil }
         } catch {
             failed = true
             collections = []
@@ -140,18 +118,55 @@ struct ArticleRow: View {
     var body: some View {
         Button(action: open) {
             DisclosureRow {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(article.title)
-                        .font(.body)
+                HStack(alignment: .top, spacing: 12) {
+                    HelpRowIcon(systemName: "doc.text")
 
-                    if let description = article.description, !description.isEmpty {
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(article.title)
+                            .font(.body)
+
+                        if let description = article.description, !description.isEmpty {
+                            Text(description)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
                     }
                 }
                 .padding(.vertical, 2)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct CollectionRow: View {
+    let collection: HelpCollection
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            DisclosureRow {
+                HStack(alignment: .top, spacing: 12) {
+                    HelpRowIcon(systemName: "folder")
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(collection.name)
+                            .font(.body.weight(.medium))
+
+                        if let description = collection.description, !description.isEmpty {
+                            Text(description)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+
+                        Text(Strings.articleCount(collection.articleCount))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(.vertical, 4)
             }
         }
         .buttonStyle(.plain)
@@ -165,21 +180,38 @@ struct CollectionView: View {
     let collectionID: Int
     let title: String
 
+    @State private var children: [HelpCollection]?
     @State private var articles: [HelpArticleSummary]?
 
     var body: some View {
-        List(articles ?? []) { article in
-            ArticleRow(article: article) {
-                router.push(.article(helpCenterID: helpCenterID, articleID: article.id))
+        List {
+            if let children, !children.isEmpty {
+                Section(Strings.collectionsHeader) {
+                    ForEach(children) { child in
+                        CollectionRow(collection: child) {
+                            router.push(.collection(helpCenterID: helpCenterID, collectionID: child.id, title: child.name))
+                        }
+                    }
+                }
+            }
+
+            if let articles, !articles.isEmpty {
+                Section(Strings.articlesHeader) {
+                    ForEach(articles) { article in
+                        ArticleRow(article: article) {
+                            router.push(.article(helpCenterID: helpCenterID, articleID: article.id))
+                        }
+                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
         .listSectionSpacing(.compact)
         .contentMargins(.top, 8, for: .scrollContent)
         .overlay {
-            if articles == nil {
+            if articles == nil || children == nil {
                 ProgressView()
-            } else if articles?.isEmpty == true {
+            } else if articles?.isEmpty == true, children?.isEmpty == true {
                 Text(Strings.noArticles).foregroundStyle(.secondary)
             }
         }
@@ -187,7 +219,12 @@ struct CollectionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .closeToolbar()
         .task {
-            articles = (try? await store.help(.articles(helpCenterID: helpCenterID, collectionID: collectionID)))?.data ?? []
+            async let loadedChildren = try? await store.help(.collections(helpCenterID: helpCenterID))
+            async let loadedArticles = try? await store.help(.articles(helpCenterID: helpCenterID, collectionID: collectionID))
+
+            let (collectionPage, articlePage) = await (loadedChildren, loadedArticles)
+            children = (collectionPage?.data ?? []).withTotals().filter { $0.parentId == collectionID }
+            articles = articlePage?.data ?? []
         }
     }
 }
@@ -205,5 +242,18 @@ struct DisclosureRow<Content: View>: View {
                 .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
+    }
+}
+
+struct HelpRowIcon: View {
+    let systemName: String
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(width: 32, height: 32)
+            .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityHidden(true)
     }
 }

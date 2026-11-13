@@ -43,11 +43,13 @@ final class MessengerPresenter {
 
     private static func topViewController() -> UIViewController? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes
+        let candidates = scenes
             .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
-            .first(where: \.isKeyWindow)
-            ?? scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+            .filter { !($0 is PassthroughWindow) }
+        let window = candidates.first(where: \.isKeyWindow)
+            ?? candidates.first { !$0.isHidden && $0.windowLevel == .normal }
+            ?? scenes.flatMap(\.windows).first { !($0 is PassthroughWindow) && $0.isKeyWindow }
 
         var top = window?.rootViewController
 

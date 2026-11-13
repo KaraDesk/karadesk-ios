@@ -130,7 +130,7 @@ private struct MessageView: View {
                         .font(.body)
                         .textSelection(.enabled)
                         .foregroundStyle(mine ? theme.onAccent : .primary)
-                        .tint(mine ? theme.onAccent : theme.accent)
+                        .tint(mine ? theme.onAccent : theme.tint)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
                         .background(

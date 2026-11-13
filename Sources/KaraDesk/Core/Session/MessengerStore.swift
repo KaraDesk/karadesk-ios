@@ -27,6 +27,9 @@ final class MessengerStore {
     private(set) var user: KaraDesk.User?
 
     @ObservationIgnored var visibleConversationID: Int?
+    @ObservationIgnored var isMessengerVisible = false
+    @ObservationIgnored var onIncomingMessage: ((Message) -> Void)?
+    @ObservationIgnored var onUnreadWaiting: ((Conversation, Conversation.Preview) -> Void)?
     @ObservationIgnored var onUnreadCountChange: ((Int) -> Void)?
 
     @ObservationIgnored private let client: APIClient
@@ -112,6 +115,47 @@ final class MessengerStore {
     func start() async throws(KaraDeskError) {
         _ = try await session()
         await refreshConversations()
+        announceWaitingReply()
+    }
+
+    func refreshAndAnnounce() async {
+        guard phase == .ready else {
+            return
+        }
+
+        await refreshConversations()
+        announceWaitingReply()
+    }
+
+    private func announceWaitingReply() {
+        guard !isMessengerVisible else {
+            return
+        }
+
+        let waiting = conversations
+            .filter { $0.unread && $0.mergedIntoId == nil }
+            .compactMap { conversation in conversation.lastMessage.map { (conversation, $0) } }
+            .filter { $0.1.authorType != .contact }
+            .max { $0.1.createdAt < $1.1.createdAt }
+
+        guard let (conversation, preview) = waiting else {
+            return
+        }
+
+        guard UserDefaults.standard.string(forKey: announcedKey) != preview.id else {
+            return
+        }
+
+        markAnnounced(preview.id)
+        onUnreadWaiting?(conversation, preview)
+    }
+
+    private var announcedKey: String {
+        "karadesk.announced.\(spaceID).\(appID)"
+    }
+
+    func markAnnounced(_ messageID: String) {
+        UserDefaults.standard.set(messageID, forKey: announcedKey)
     }
 
     @discardableResult
@@ -215,8 +259,8 @@ final class MessengerStore {
         return sent.conversationId
     }
 
-    func markRead(_ conversationID: Int) async {
-        guard conversation(conversationID)?.unread == true,
+    func markRead(_ conversationID: Int, force: Bool = false) async {
+        guard force || conversation(conversationID)?.unread == true,
               let updated = try? await authorized(.markRead(conversationID))
         else {
             return
@@ -361,12 +405,21 @@ final class MessengerStore {
 
         conversation.lastMessageAt = message.createdAt
 
+        if message.kind != .other("note") {
+            conversation.lastMessage = Conversation.Preview(message)
+        }
+
         if !message.isFromContact && message.kind != .other("note") {
             if visibleConversationID == id {
-                Task { await markRead(id) }
+                Task { await markRead(id, force: true) }
             } else {
                 conversation.unread = true
                 conversation.unreadCount += 1
+
+                if !isMessengerVisible {
+                    markAnnounced(message.id)
+                    onIncomingMessage?(message)
+                }
             }
         }
 

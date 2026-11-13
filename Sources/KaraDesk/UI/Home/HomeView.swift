@@ -68,6 +68,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let greeting = store.settings?.greeting, !greeting.isEmpty {
                     Text(greeting)
+                        .opacity(0.7)
                 }
 
                 if let intro = store.settings?.intro, !intro.isEmpty {
@@ -94,6 +95,15 @@ struct HomeView: View {
                 Color.clear
             }
             .frame(maxWidth: 140, maxHeight: 32, alignment: .leading)
+            .accessibilityLabel(store.boot?.space.name ?? "")
+        } else if let avatar = store.boot?.space.avatarURL {
+            AsyncImage(url: avatar) { image in
+                image.resizable().scaledToFit()
+            } placeholder: {
+                Color.clear
+            }
+            .frame(width: 36, height: 36)
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             .accessibilityLabel(store.boot?.space.name ?? "")
         } else if let name = store.boot?.space.name {
             Text(name)
@@ -453,9 +463,10 @@ struct PoweredBy: View {
                 Text(Strings.poweredBy)
                     .font(.caption.weight(.medium))
             }
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
+            .background(.ultraThinMaterial, in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

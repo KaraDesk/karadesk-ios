@@ -28,6 +28,14 @@ struct Conversation: Decodable, Sendable, Equatable, Identifiable {
             case createdAt
         }
 
+        init(_ message: Message) {
+            id = message.id
+            authorType = AuthorKind(rawValue: message.author.kind.rawValue) ?? .user
+            authorName = message.author.name
+            body = message.body
+            createdAt = message.createdAt
+        }
+
         init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(String.self, forKey: .id)

@@ -5,6 +5,9 @@ enum Strings {
     static let messages = String(localized: "nav.messages", defaultValue: "Messages", bundle: .module)
     static let help = String(localized: "nav.help", defaultValue: "Help", bundle: .module)
     static let close = String(localized: "action.close", defaultValue: "Close", bundle: .module)
+    static let now = String(localized: "time.now", defaultValue: "now", bundle: .module)
+    static let sentAnAttachment = String(localized: "preview.attachment", defaultValue: "Sent an attachment", bundle: .module)
+    static let openConversation = String(localized: "notification.open", defaultValue: "Opens the conversation", bundle: .module)
     static let back = String(localized: "action.back", defaultValue: "Back", bundle: .module)
     static let retry = String(localized: "action.retry", defaultValue: "Try again", bundle: .module)
     static let send = String(localized: "action.send", defaultValue: "Send", bundle: .module)
@@ -52,6 +55,11 @@ enum Strings {
     }
 
     static func articleCount(_ count: Int) -> String {
-        String(localized: "help.article_count", defaultValue: "\(count) articles", bundle: .module)
+        count == 1
+            ? String(localized: "help.article_count.one", defaultValue: "1 article", bundle: .module)
+            : String(localized: "help.article_count", defaultValue: "\(count) articles", bundle: .module)
     }
+
+    static let collectionsHeader = String(localized: "help.section.collections", defaultValue: "Collections", bundle: .module)
+    static let articlesHeader = String(localized: "help.section.articles", defaultValue: "Articles", bundle: .module)
 }
