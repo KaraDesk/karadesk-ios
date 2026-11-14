@@ -1,8 +1,17 @@
 import Foundation
+import os
 import UIKit
 import UserNotifications
 
 extension KaraDesk {
+    /// Whether tapping a KaraDesk notification opens its conversation automatically. Defaults to `true`.
+    ///
+    /// KaraDesk attaches to your app's `UNUserNotificationCenter` delegate when you call
+    /// ``initialize(spaceID:appID:)`` and only acts on its own notifications. Every other
+    /// notification reaches your delegate as usual. Set this to `false` before calling
+    /// ``initialize(spaceID:appID:)`` to call ``handlePush(_:)`` yourself instead.
+    nonisolated(unsafe) public static var opensConversationsFromNotifications = true
+
     /// Registers this device for KaraDesk push notifications.
     ///
     /// Pass the token iOS gives your app delegate. KaraDesk sends a push when your team replies
@@ -38,7 +47,8 @@ extension KaraDesk {
 
     /// Opens the conversation a KaraDesk notification is about.
     ///
-    /// Call this when the user taps a notification. It returns `false` and does nothing for
+    /// KaraDesk does this for you when a notification is tapped, unless you turned off
+    /// ``opensConversationsFromNotifications``. It returns `false` and does nothing for
     /// notifications that didn't come from KaraDesk.
     ///
     /// ```swift
@@ -55,7 +65,15 @@ extension KaraDesk {
             return false
         }
 
+        guard recentlyHandled.claim(payload) else {
+            return true
+        }
+
         Task { @MainActor in
+            guard store != nil else {
+                return
+            }
+
             whenActive {
                 present(.conversation(id: payload.conversationID))
             }
@@ -94,6 +112,8 @@ extension KaraDesk {
 
     static var pendingPushToken: String?
 
+    private nonisolated static let recentlyHandled = HandledPushes()
+
     private static func whenActive(_ action: @escaping @MainActor () -> Void) {
         guard UIApplication.shared.applicationState != .active else {
             DispatchQueue.main.async {
@@ -113,6 +133,21 @@ extension KaraDesk {
             }
 
             MainActor.assumeIsolated { action() }
+        }
+    }
+}
+
+private final class HandledPushes: Sendable {
+    private let last = OSAllocatedUnfairLock<(payload: PushPayload, at: Date)?>(initialState: nil)
+
+    func claim(_ payload: PushPayload) -> Bool {
+        last.withLock { last in
+            if let previous = last, previous.payload == payload, Date().timeIntervalSince(previous.at) < 2 {
+                return false
+            }
+
+            last = (payload, Date())
+            return true
         }
     }
 }

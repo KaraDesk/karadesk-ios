@@ -2,6 +2,10 @@
 
 All notable changes to the KaraDesk iOS SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+- Tapping a KaraDesk notification opens its conversation automatically, with no code in your notification delegate. KaraDesk only acts on its own notifications. Set `KaraDesk.opensConversationsFromNotifications = false` before `initialize` to handle taps yourself with `KaraDesk.handlePush(_:)`.
+
 ## 0.3.0
 
 - Push notifications. Pass the APNs device token to `KaraDesk.setDeviceToken(_:)` and add your APNs key in KaraDesk under Settings → Apps, and your users get a push when your team replies while they're away. `KaraDesk.handlePush(_:)` opens the conversation from a notification, and `KaraDesk.presentationOptions(for:)` hides it while the messenger is already open.

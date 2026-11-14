@@ -217,19 +217,13 @@ func application(_ application: UIApplication, didRegisterForRemoteNotifications
 
 KaraDesk keeps the token linked to whoever is signed in. It moves to the new user after `login`, and stops after `logout`.
 
-### 4. Open conversations from notifications
+### 4. That's it
 
-In your `UNUserNotificationCenterDelegate`, let KaraDesk handle its own notifications:
+Tapping a KaraDesk notification opens its conversation automatically. KaraDesk attaches to your `UNUserNotificationCenter` delegate when you call `initialize`, acts only on its own notifications, and passes every other notification to your delegate as usual.
+
+To also hide KaraDesk notifications while the messenger is already open, return its options from `willPresent`:
 
 ```swift
-func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-    if KaraDesk.handlePush(response.notification.request.content.userInfo) {
-        return
-    }
-
-    // Handle your own notifications.
-}
-
 func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
     if let options = await KaraDesk.presentationOptions(for: notification.request.content.userInfo) {
         return options
@@ -239,7 +233,7 @@ func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent noti
 }
 ```
 
-`presentationOptions(for:)` hides the notification while the messenger is open, since the reply already shows there. Use `KaraDesk.isKaraDeskPush(_:)` anywhere else you need to tell KaraDesk notifications apart from your own.
+If you'd rather handle taps yourself, set `KaraDesk.opensConversationsFromNotifications = false` before calling `initialize`, then call `KaraDesk.handlePush(_:)` from `didReceive`. Use `KaraDesk.isKaraDeskPush(_:)` anywhere you need to tell KaraDesk notifications apart from your own.
 
 Debug builds from Xcode use Apple's sandbox push environment and App Store and TestFlight builds use production. KaraDesk detects this for you.
 

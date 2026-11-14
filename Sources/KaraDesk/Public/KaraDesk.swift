@@ -127,6 +127,10 @@ public enum KaraDesk {
 
         self.store = store
 
+        if opensConversationsFromNotifications {
+            NotificationTapHandler.install()
+        }
+
         if let pendingPushToken {
             store.setPushToken(pendingPushToken)
         }
