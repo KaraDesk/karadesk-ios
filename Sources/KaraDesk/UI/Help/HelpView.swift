@@ -6,7 +6,8 @@ struct HelpView: View {
 
     @State private var collections: [HelpCollection]?
     @State private var results: [HelpArticleSummary]?
-    @State private var failed = false
+    @State private var loadError: KaraDeskError?
+    @State private var searchError: KaraDeskError?
 
     private var helpCenter: HelpCenterReference? {
         store.settings?.helpCenter
@@ -31,7 +32,11 @@ struct HelpView: View {
         .contentMargins(.top, 8, for: .scrollContent)
         .searchable(text: $router.helpQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: Strings.searchForHelp)
         .overlay {
-            if collections == nil, !failed {
+            if !isSearching, let loadError, collections?.isEmpty != false {
+                ErrorStateView(error: loadError, title: Strings.helpLoadFailed) {
+                    await loadCollections()
+                }
+            } else if collections == nil, loadError == nil {
                 ProgressView()
             }
         }
@@ -46,9 +51,13 @@ struct HelpView: View {
         }
     }
 
+    private var isSearching: Bool {
+        !query.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     @ViewBuilder
     private var collectionRows: some View {
-        if let collections, collections.isEmpty {
+        if let collections, collections.isEmpty, loadError == nil {
             Text(Strings.noArticles)
                 .foregroundStyle(.secondary)
         }
@@ -66,7 +75,11 @@ struct HelpView: View {
 
     @ViewBuilder
     private var resultRows: some View {
-        if let results, results.isEmpty {
+        if let searchError {
+            InlineErrorRow(error: searchError) {
+                await runSearch()
+            }
+        } else if let results, results.isEmpty {
             Text(Strings.noResults)
                 .foregroundStyle(.secondary)
         }
@@ -84,20 +97,24 @@ struct HelpView: View {
             return
         }
 
+        loadError = nil
+
         do {
             let page = try await store.help(.collections(helpCenterID: helpCenter.id))
             collections = page.data.withTotals().filter { $0.parentId == nil }
+        } catch where !error.isCancelled {
+            loadError = error
         } catch {
-            failed = true
-            collections = []
+            return
         }
     }
 
     private func search() async {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let helpCenter, !term.isEmpty else {
+        guard helpCenter != nil, !term.isEmpty else {
             results = nil
+            searchError = nil
             return
         }
 
@@ -107,7 +124,33 @@ struct HelpView: View {
             return
         }
 
-        results = (try? await store.help(.search(helpCenterID: helpCenter.id, query: term)))?.data ?? []
+        await runSearch()
+    }
+
+    private func runSearch() async {
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let helpCenter, !term.isEmpty else {
+            return
+        }
+
+        do {
+            let page = try await store.help(.search(helpCenterID: helpCenter.id, query: term))
+
+            guard term == query.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                return
+            }
+
+            searchError = nil
+            results = page.data
+        } catch {
+            guard !Task.isCancelled, !error.isCancelled else {
+                return
+            }
+
+            searchError = error
+            results = nil
+        }
     }
 }
 
@@ -182,6 +225,7 @@ struct CollectionView: View {
 
     @State private var children: [HelpCollection]?
     @State private var articles: [HelpArticleSummary]?
+    @State private var loadError: KaraDeskError?
 
     var body: some View {
         List {
@@ -209,7 +253,11 @@ struct CollectionView: View {
         .listSectionSpacing(.compact)
         .contentMargins(.top, 8, for: .scrollContent)
         .overlay {
-            if articles == nil || children == nil {
+            if let loadError {
+                ErrorStateView(error: loadError, title: Strings.helpLoadFailed) {
+                    await load()
+                }
+            } else if articles == nil || children == nil {
                 ProgressView()
             } else if articles?.isEmpty == true, children?.isEmpty == true {
                 Text(Strings.noArticles).foregroundStyle(.secondary)
@@ -219,12 +267,26 @@ struct CollectionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .closeToolbar()
         .task {
-            async let loadedChildren = try? await store.help(.collections(helpCenterID: helpCenterID))
-            async let loadedArticles = try? await store.help(.articles(helpCenterID: helpCenterID, collectionID: collectionID))
+            await load()
+        }
+    }
 
-            let (collectionPage, articlePage) = await (loadedChildren, loadedArticles)
-            children = (collectionPage?.data ?? []).withTotals().filter { $0.parentId == collectionID }
-            articles = articlePage?.data ?? []
+    private func load() async {
+        loadError = nil
+
+        do {
+            async let loadedChildren = store.help(.collections(helpCenterID: helpCenterID))
+            async let loadedArticles = store.help(.articles(helpCenterID: helpCenterID, collectionID: collectionID))
+
+            let (collectionPage, articlePage) = try await (loadedChildren, loadedArticles)
+            children = collectionPage.data.withTotals().filter { $0.parentId == collectionID }
+            articles = articlePage.data
+        } catch let error as KaraDeskError {
+            if !error.isCancelled {
+                loadError = error
+            }
+        } catch {
+            loadError = .unexpectedResponse
         }
     }
 }

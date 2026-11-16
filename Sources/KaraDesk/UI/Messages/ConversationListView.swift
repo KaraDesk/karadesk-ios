@@ -8,7 +8,12 @@ struct ConversationListView: View {
 
     var body: some View {
         Group {
-            if store.conversations.isEmpty {
+            if store.conversations.isEmpty, let error = store.conversationsError {
+                ErrorStateView(error: error, title: Strings.messagesLoadFailed) {
+                    await store.refreshConversations()
+                }
+                .frame(maxHeight: .infinity)
+            } else if store.conversations.isEmpty {
                 ContentUnavailableView {
                     Label(Strings.noConversations, systemImage: "bubble.left.and.bubble.right")
                 } description: {

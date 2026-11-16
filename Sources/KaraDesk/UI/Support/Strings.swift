@@ -44,7 +44,19 @@ enum Strings {
     static let thanksForRating = String(localized: "csat.thanks", defaultValue: "Thanks for your feedback!", bundle: .module)
     static let wasThisHelpful = String(localized: "article.reaction", defaultValue: "Did this answer your question?", bundle: .module)
     static let thanksForReaction = String(localized: "article.reaction.thanks", defaultValue: "Thanks for letting us know.", bundle: .module)
-    static let messengerUnavailable = String(localized: "messenger.unavailable", defaultValue: "Messaging isn't available right now.", bundle: .module)
+    static let offlineTitle = String(localized: "error.offline.title", defaultValue: "You're offline", bundle: .module)
+    static let unavailableDetail = String(localized: "error.unavailable.detail", defaultValue: "You can't message us here right now. Please try again later.", bundle: .module)
+    static let offlineDetail = String(localized: "error.offline.detail", defaultValue: "Check your connection and try again.", bundle: .module)
+    static let offlineBanner = String(localized: "error.offline.banner", defaultValue: "No internet connection", bundle: .module)
+    static let loadFailedTitle = String(localized: "error.load.title", defaultValue: "Something went wrong", bundle: .module)
+    static let dismiss = String(localized: "action.dismiss", defaultValue: "Dismiss", bundle: .module)
+    static let conversationLoadFailed = String(localized: "chat.load_failed", defaultValue: "Couldn't load this conversation", bundle: .module)
+    static let messagesLoadFailed = String(localized: "messages.load_failed", defaultValue: "Couldn't load your messages", bundle: .module)
+    static let helpLoadFailed = String(localized: "help.load_failed", defaultValue: "Couldn't load help articles", bundle: .module)
+    static let articleLoadFailed = String(localized: "article.load_failed", defaultValue: "Couldn't load this article", bundle: .module)
+    static let articleUnavailable = String(localized: "article.unavailable", defaultValue: "This article isn't available.", bundle: .module)
+    static let notSent = String(localized: "composer.not_sent", defaultValue: "Not sent.", bundle: .module)
+    static let messengerUnavailable = String(localized: "messenger.unavailable", defaultValue: "Messaging isn't available", bundle: .module)
 
     static func replyExpectation(_ replyTime: String?) -> String {
         guard let replyTime, !replyTime.isEmpty else {

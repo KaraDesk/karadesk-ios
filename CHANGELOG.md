@@ -2,7 +2,18 @@
 
 All notable changes to the KaraDesk iOS SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## 1.0.0
+
+- Errors are explained instead of leaving the messenger spinning. Requests fail right away when the device is offline and give up after 20 seconds otherwise, so sending a message never hangs.
+- A "No internet connection" banner shows at the top of the messenger while the device is offline. When the connection returns, the messenger starts again if it couldn't before, or refreshes and reconnects if it was already open.
+- Screens that fail to load (starting the messenger, the message list, a conversation, the help center, a collection or an article) explain what went wrong and offer Try again when retrying can help. They no longer show "No messages", "There are no articles yet" or "No articles match your search" when the real problem was a failed request.
+- When the messenger is turned off for your space or audience, or your KaraDesk subscription is inactive, users see "Messaging isn't available" instead of a technical message, and the reason is written to the log for you. If that happens while the messenger is open, it switches to the same screen.
+- A message that fails to send stays in the composer with a "Not sent" notice explaining why, which can be dismissed. Failed attachment uploads can be retried.
+- Server errors show "Something went wrong on our end. Please try again." instead of the server's raw error text.
+- Conversations show a spinner while their history loads.
+- `KaraDeskError` adds `isOffline` and `isRetryable`, and `.network` errors describe whether the device is offline, the request timed out, or KaraDesk couldn't be reached.
+
+## 0.4.0
 
 - Tapping a KaraDesk notification opens its conversation automatically, with no code in your notification delegate. KaraDesk only acts on its own notifications. Set `KaraDesk.opensConversationsFromNotifications = false` before `initialize` to handle taps yourself with `KaraDesk.handlePush(_:)`.
 

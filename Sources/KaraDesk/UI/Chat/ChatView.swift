@@ -71,6 +71,14 @@ struct ChatView: View {
                 LazyVStack(spacing: 16) {
                     if model.conversationID == nil {
                         EmptyChat(team: store.boot?.team ?? [])
+                    } else if model.messages.isEmpty, let error = model.loadError {
+                        ErrorStateView(error: error, title: Strings.conversationLoadFailed) {
+                            await model.loadThread()
+                        }
+                        .padding(.top, 40)
+                    } else if model.messages.isEmpty, model.isLoading {
+                        ProgressView()
+                            .padding(.top, 80)
                     }
 
                     ForEach(MessageGroup.make(from: model.messages)) { group in

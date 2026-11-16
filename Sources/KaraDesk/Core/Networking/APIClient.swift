@@ -117,8 +117,9 @@ struct APIClient: Sendable {
 extension URLSession {
     static let karaDesk: URLSession = {
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 30
-        configuration.waitsForConnectivity = true
+        configuration.timeoutIntervalForRequest = 20
+        configuration.timeoutIntervalForResource = 60
+        configuration.waitsForConnectivity = false
         configuration.httpCookieStorage = nil
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil

@@ -13,10 +13,28 @@ struct Composer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let notice = model.notice {
-                Text(notice)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .padding(.horizontal, 4)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .accessibilityHidden(true)
+
+                    Text(notice)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button {
+                        model.notice = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2.weight(.bold))
+                            .padding(4)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Strings.dismiss)
+                }
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .combine)
             }
 
             if !model.attachments.isEmpty {
@@ -25,6 +43,8 @@ struct Composer: View {
                         ForEach(model.attachments) { attachment in
                             PendingAttachmentView(attachment: attachment) {
                                 model.remove(attachment)
+                            } onRetry: {
+                                model.retry(attachment)
                             }
                         }
                     }
@@ -123,6 +143,7 @@ struct Composer: View {
 private struct PendingAttachmentView: View {
     let attachment: ChatModel.PendingAttachment
     let onRemove: () -> Void
+    let onRetry: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -159,6 +180,15 @@ private struct PendingAttachmentView: View {
                 .foregroundStyle(.secondary)
             }
             .frame(maxWidth: 120, alignment: .leading)
+
+            if attachment.status == .failed {
+                Button(action: onRetry) {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Strings.retry)
+            }
 
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")

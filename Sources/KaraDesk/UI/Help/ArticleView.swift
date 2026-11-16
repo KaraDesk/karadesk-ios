@@ -7,6 +7,7 @@ struct ArticleView: View {
 
     @State private var article: HelpArticle?
     @State private var failed = false
+    @State private var loadError: KaraDeskError?
     @State private var reaction: ArticleReaction?
     @State private var browserURL: URL?
 
@@ -40,8 +41,13 @@ struct ArticleView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 32)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let loadError, loadError.isRetryable {
+                ErrorStateView(error: loadError, title: Strings.articleLoadFailed) {
+                    await load()
+                }
+                .padding(.top, 40)
             } else if failed {
-                ContentUnavailableView(Strings.noArticles, systemImage: "doc.text.magnifyingglass")
+                ContentUnavailableView(Strings.articleUnavailable, systemImage: "doc.text.magnifyingglass")
                     .padding(.top, 80)
             } else {
                 ProgressView()
@@ -139,10 +145,15 @@ struct ArticleView: View {
             return
         }
 
+        loadError = nil
+
         do {
             article = try await store.help(.article(helpCenterID: id, articleID: articleID))
-        } catch {
+        } catch where !error.isCancelled {
+            loadError = error
             failed = true
+        } catch {
+            return
         }
     }
 }

@@ -38,12 +38,51 @@ extension KaraDeskError: LocalizedError {
             return "The KaraDesk space ID and app ID must not be empty."
         case let .identityVerificationFailed(message), let .unavailable(message):
             return message
+        case let .network(code) where KaraDeskError.offlineCodes.contains(code):
+            return String(localized: "error.offline", defaultValue: "You're offline. Check your connection and try again.", bundle: .module)
+        case .network(.timedOut):
+            return String(localized: "error.timeout", defaultValue: "This is taking longer than usual. Please try again.", bundle: .module)
         case .network:
             return String(localized: "error.network", defaultValue: "Can't connect right now. Check your connection and try again.", bundle: .module)
+        case let .server(statusCode, _) where statusCode >= 500:
+            return String(localized: "error.server", defaultValue: "Something went wrong on our end. Please try again.", bundle: .module)
         case let .server(_, message):
             return message
         case .unexpectedResponse:
             return String(localized: "error.unexpected", defaultValue: "Something went wrong. Please try again.", bundle: .module)
+        }
+    }
+}
+
+extension KaraDeskError {
+    static let offlineCodes: Set<URLError.Code> = [
+        .notConnectedToInternet,
+        .networkConnectionLost,
+        .dataNotAllowed,
+        .internationalRoamingOff,
+        .callIsActive,
+    ]
+
+    /// Whether the device has no usable internet connection.
+    public var isOffline: Bool {
+        if case let .network(code) = self {
+            return Self.offlineCodes.contains(code)
+        }
+
+        return false
+    }
+
+    var isCancelled: Bool {
+        self == .network(.cancelled)
+    }
+
+    /// Whether trying the same request again might succeed.
+    public var isRetryable: Bool {
+        switch self {
+        case .network, .server, .unexpectedResponse:
+            return true
+        default:
+            return false
         }
     }
 }

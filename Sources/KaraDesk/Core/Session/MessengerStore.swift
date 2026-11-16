@@ -25,6 +25,7 @@ final class MessengerStore {
     private(set) var threads: [Int: [Message]] = [:]
     private(set) var typing: [Int: Typing] = [:]
     private(set) var user: KaraDesk.User?
+    private(set) var conversationsError: KaraDeskError?
 
     @ObservationIgnored var visibleConversationID: Int?
     @ObservationIgnored var isMessengerVisible = false
@@ -218,17 +219,39 @@ final class MessengerStore {
                 phase = .failed(error)
             }
 
+            if case let .unavailable(message) = error {
+                Log.session.error("The messenger is unavailable: \(message, privacy: .public)")
+            } else if case let .identityVerificationFailed(message) = error {
+                Log.session.error("Identity verification failed: \(message, privacy: .public)")
+            }
+
             throw error
         }
     }
 
     func refreshConversations() async {
-        guard let page = try? await authorized(.conversations()) else {
+        do {
+            let page = try await authorized(.conversations())
+            conversationsError = nil
+            conversations = page.data.sorted { $0.sortDate > $1.sortDate }
+            publishUnreadCount()
+        } catch where !error.isCancelled {
+            conversationsError = error
+        } catch {
             return
         }
+    }
 
-        conversations = page.data.sorted { $0.sortDate > $1.sortDate }
-        publishUnreadCount()
+    func reconnected() async {
+        switch phase {
+        case .failed:
+            try? await start()
+        case .ready:
+            await resumeRealtime()
+            await refreshConversations()
+        case .idle, .loading:
+            break
+        }
     }
 
     // MARK: Conversations
@@ -319,6 +342,11 @@ final class MessengerStore {
             boot = nil
             let fresh = try await session().token
             return try await client.send(request, token: fresh)
+        } catch let error where error.isMessengerUnavailable {
+            Log.session.error("The messenger became unavailable: \(error.localizedDescription, privacy: .public)")
+            suspendRealtime()
+            phase = .failed(error)
+            throw error
         }
     }
 
@@ -546,6 +574,7 @@ final class MessengerStore {
         realtime = nil
         boot = nil
         conversations = []
+        conversationsError = nil
         threads = [:]
         typing = [:]
         phase = .idle
@@ -566,6 +595,14 @@ final class MessengerStore {
 }
 
 extension KaraDeskError {
+    var isMessengerUnavailable: Bool {
+        if case let .unavailable(message) = self {
+            return message.localizedCaseInsensitiveContains("messenger")
+        }
+
+        return false
+    }
+
     var isExpiredSession: Bool {
         if case .server(401, _) = self {
             return true

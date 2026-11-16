@@ -17,6 +17,7 @@ final class ChatModel {
         let contentType: String
         let byteSize: Int
         let preview: UIImage?
+        let data: Data
         var status: Status = .uploading
     }
 
@@ -26,6 +27,8 @@ final class ChatModel {
     var draft: String
     private(set) var attachments: [PendingAttachment] = []
     private(set) var isSending = false
+    private(set) var isLoading = false
+    private(set) var loadError: KaraDeskError?
     var notice: String?
 
     @ObservationIgnored private let store: MessengerStore
@@ -85,10 +88,31 @@ final class ChatModel {
         store.visibleConversationID = conversationID
 
         if store.threads[conversationID] == nil {
-            try? await store.loadThread(conversationID)
+            await loadThread()
         }
 
         await store.markRead(conversationID)
+    }
+
+    func loadThread() async {
+        guard let conversationID else {
+            return
+        }
+
+        isLoading = true
+        loadError = nil
+
+        defer {
+            isLoading = false
+        }
+
+        do {
+            try await store.loadThread(conversationID)
+        } catch where !error.isCancelled {
+            loadError = error
+        } catch {
+            return
+        }
     }
 
     func disappear() {
@@ -130,7 +154,7 @@ final class ChatModel {
 
             return id
         } catch {
-            notice = error.localizedDescription
+            notice = "\(Strings.notSent) \(error.userMessage)"
             return nil
         }
     }
@@ -139,7 +163,7 @@ final class ChatModel {
         do {
             try await store.rate(message, rating: rating, remark: remark)
         } catch {
-            notice = error.localizedDescription
+            notice = error.userMessage
         }
     }
 
@@ -181,6 +205,16 @@ final class ChatModel {
         attachments.removeAll { $0.id == attachment.id }
     }
 
+    func retry(_ attachment: PendingAttachment) {
+        guard let index = attachments.firstIndex(where: { $0.id == attachment.id }) else {
+            return
+        }
+
+        attachments[index].status = .uploading
+        notice = nil
+        upload(attachments[index])
+    }
+
     private func add(_ data: Data, name: String, contentType: String, preview: UIImage? = nil) {
         let rules = attachmentRules
 
@@ -202,18 +236,23 @@ final class ChatModel {
             name: name,
             contentType: contentType,
             byteSize: data.count,
-            preview: preview ?? (contentType.hasPrefix("image/") ? UIImage(data: data) : nil)
+            preview: preview ?? (contentType.hasPrefix("image/") ? UIImage(data: data) : nil),
+            data: data
         )
         attachments.append(pending)
         notice = nil
+        upload(pending)
+    }
 
+    private func upload(_ pending: PendingAttachment) {
         Task {
             let status: PendingAttachment.Status
 
             do {
-                status = .ready(try await store.upload(data, filename: name, contentType: contentType))
+                status = .ready(try await store.upload(pending.data, filename: pending.name, contentType: pending.contentType))
             } catch {
                 status = .failed
+                notice = (error as? KaraDeskError)?.userMessage ?? Strings.uploadFailed
             }
 
             if let index = attachments.firstIndex(where: { $0.id == pending.id }) {

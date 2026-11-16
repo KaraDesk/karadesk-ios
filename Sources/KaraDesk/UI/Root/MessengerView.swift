@@ -6,6 +6,7 @@ struct MessengerView: View {
     let onClose: @MainActor @Sendable () -> Void
 
     @Environment(\.colorScheme) private var systemScheme
+    private let network = NetworkMonitor.shared
 
     init(store: MessengerStore, router: MessengerRouter, onClose: @escaping @MainActor @Sendable () -> Void) {
         self.store = store
@@ -23,25 +24,18 @@ struct MessengerView: View {
     }
 
     var body: some View {
-        Group {
-            switch store.phase {
-            case .ready:
-                if router.style == .standalone {
-                    standalone
-                } else {
-                    tabs
-                }
-            case let .failed(error):
-                UnavailableView(error: error) {
-                    Task { try? await store.start() }
-                }
-            case .idle, .loading:
-                NavigationStack {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .closeToolbar()
-                }
-                .task { try? await store.start() }
+        VStack(spacing: 0) {
+            if !network.isOnline {
+                OfflineBanner()
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            content
+        }
+        .animation(.easeInOut(duration: 0.25), value: network.isOnline)
+        .onChange(of: network.isOnline) { _, online in
+            if online {
+                Task { await store.reconnected() }
             }
         }
         .environment(\.karaDeskTheme, theme)
@@ -55,6 +49,29 @@ struct MessengerView: View {
         }
         .onDisappear {
             store.isMessengerVisible = false
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch store.phase {
+        case .ready:
+            if router.style == .standalone {
+                standalone
+            } else {
+                tabs
+            }
+        case let .failed(error):
+            UnavailableView(error: error) {
+                await Task { try? await store.start() }.value
+            }
+        case .idle, .loading:
+            NavigationStack {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .closeToolbar()
+            }
+            .task { await Task { try? await store.start() }.value }
         }
     }
 
@@ -151,21 +168,12 @@ struct MessengerView: View {
 
 private struct UnavailableView: View {
     let error: KaraDeskError
-    let retry: () -> Void
+    let retry: () async -> Void
 
     var body: some View {
         NavigationStack {
-            ContentUnavailableView {
-                Label(Strings.messengerUnavailable, systemImage: "bubble.left.and.exclamationmark.bubble.right")
-            } description: {
-                Text(error.localizedDescription)
-            } actions: {
-                if case .network = error {
-                    Button(Strings.retry, action: retry)
-                        .buttonStyle(.borderedProminent)
-                }
-            }
-            .closeToolbar()
+            ErrorStateView(error: error, retry: retry)
+                .closeToolbar()
         }
     }
 }
