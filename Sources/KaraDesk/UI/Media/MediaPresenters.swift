@@ -7,7 +7,13 @@ struct ActivityView: UIViewControllerRepresentable {
     let items: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+
+        if Bundle.main.object(forInfoDictionaryKey: "NSPhotoLibraryAddUsageDescription") == nil {
+            controller.excludedActivityTypes = [.saveToCameraRoll]
+        }
+
+        return controller
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}

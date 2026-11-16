@@ -2,6 +2,10 @@
 
 All notable changes to the KaraDesk iOS SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.1.1
+
+- The share sheet for images only offers Save Image when your app's Info.plist includes `NSPhotoLibraryAddUsageDescription`. Before, tapping Save Image in an app without that key ended the app. Add the key if you want people to be able to save images from the messenger.
+
 ## 1.1.0
 
 - Messages from Kara, KaraDesk's AI agent, show their interactive parts: reply buttons, suggested articles, a single question field (text, email, phone, number or a choice from a list) and cards. Answers are sent to KaraDesk, the chosen button is marked, and errors such as an invalid email address show under the question. Tapping a suggested article opens it in the help center inside the messenger.
