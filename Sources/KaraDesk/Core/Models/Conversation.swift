@@ -32,7 +32,7 @@ struct Conversation: Decodable, Sendable, Equatable, Identifiable {
             id = message.id
             authorType = AuthorKind(rawValue: message.author.kind.rawValue) ?? .user
             authorName = message.author.name
-            body = message.body
+            body = message.previewText
             createdAt = message.createdAt
         }
 

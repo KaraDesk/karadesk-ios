@@ -56,6 +56,9 @@ enum Strings {
     static let articleLoadFailed = String(localized: "article.load_failed", defaultValue: "Couldn't load this article", bundle: .module)
     static let articleUnavailable = String(localized: "article.unavailable", defaultValue: "This article isn't available.", bundle: .module)
     static let notSent = String(localized: "composer.not_sent", defaultValue: "Not sent.", bundle: .module)
+    static let share = String(localized: "action.share", defaultValue: "Share", bundle: .module)
+    static let playVideo = String(localized: "attachment.play", defaultValue: "Play video", bundle: .module)
+    static let chooseOne = String(localized: "component.choose", defaultValue: "Choose one", bundle: .module)
     static let messengerUnavailable = String(localized: "messenger.unavailable", defaultValue: "Messaging isn't available", bundle: .module)
 
     static func replyExpectation(_ replyTime: String?) -> String {
@@ -63,7 +66,9 @@ enum Strings {
             return replySoon
         }
 
-        return String(localized: "presence.reply_time", defaultValue: "We typically reply in \(replyTime)", bundle: .module)
+        let phrase = replyTime.lowercased().hasPrefix("in ") ? replyTime : "in \(replyTime)"
+
+        return String(localized: "presence.reply_time", defaultValue: "We typically reply \(phrase)", bundle: .module)
     }
 
     static func articleCount(_ count: Int) -> String {

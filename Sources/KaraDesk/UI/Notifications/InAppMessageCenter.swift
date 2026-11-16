@@ -27,7 +27,7 @@ final class InAppMessageCenter {
     private static let visibleDuration: Duration = .seconds(8)
 
     func show(_ message: Message, onOpen: @escaping @MainActor (Int) -> Void) {
-        show(id: message.id, conversationID: message.conversationId, author: message.author, body: message.body, createdAt: message.createdAt, onOpen: onOpen)
+        show(id: message.id, conversationID: message.conversationId, author: message.author, body: message.previewText, createdAt: message.createdAt, onOpen: onOpen)
     }
 
     func show(id: String, conversationID: Int, author: Message.Author, body: String, createdAt: Date, onOpen: @escaping @MainActor (Int) -> Void) {

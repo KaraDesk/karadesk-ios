@@ -305,6 +305,15 @@ final class MessengerStore {
         replace(updated)
     }
 
+    func interact(with message: Message, _ interaction: ComponentInteraction) async throws(KaraDeskError) {
+        let result = try await authorized(.interact(interaction, messageID: message.id, conversationID: message.conversationId))
+        replace(result.message)
+
+        if let reply = result.reply {
+            append(reply)
+        }
+    }
+
     func upload(_ data: Data, filename: String, contentType: String) async throws(KaraDeskError) -> UploadedFile {
         let ticket = try await authorized(.startUpload(UploadRequest(filename: filename, contentType: contentType, byteSize: data.count)))
         try await client.upload(data, named: filename, contentType: contentType, to: ticket.upload)

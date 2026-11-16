@@ -95,6 +95,7 @@ struct Message: Decodable, Sendable, Equatable, Identifiable {
     var author: Author
     var body: String
     var attachments: [MessageAttachment]
+    var components: [MessageComponent]
     var metadata: Metadata?
     var createdAt: Date
 
@@ -105,6 +106,7 @@ struct Message: Decodable, Sendable, Equatable, Identifiable {
         case author
         case body
         case attachments
+        case components
         case metadata
         case createdAt
     }
@@ -117,12 +119,21 @@ struct Message: Decodable, Sendable, Equatable, Identifiable {
         author = try container.decode(Author.self, forKey: .author)
         body = container.decode(.body, default: "")
         attachments = container.decodeLossyArray(.attachments)
+        components = container.decodeLossyArray(.components)
         metadata = container.decodeLenient(.metadata)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 
     var isFromContact: Bool {
         author.kind == .contact
+    }
+
+    var previewText: String {
+        guard body.isEmpty else {
+            return body
+        }
+
+        return components.lazy.compactMap(\.previewText).first ?? ""
     }
 }
 
@@ -134,8 +145,30 @@ enum MessageAttachment: Decodable, Sendable, Equatable {
         var byteSize: Int
         var url: URL
 
+        enum Kind: Equatable, Sendable {
+            case image
+            case video
+            case file
+        }
+
+        static let inlineImageTypes: Set<String> = ["image/png", "image/jpeg", "image/gif", "image/webp"]
+
+        var kind: Kind {
+            let type = contentType.lowercased()
+
+            if Self.inlineImageTypes.contains(type) {
+                return .image
+            }
+
+            if type.hasPrefix("video/") {
+                return .video
+            }
+
+            return .file
+        }
+
         var isImage: Bool {
-            ["image/png", "image/jpeg", "image/gif", "image/webp", "image/heic"].contains(contentType)
+            kind == .image
         }
     }
 

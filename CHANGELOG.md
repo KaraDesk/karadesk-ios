@@ -2,6 +2,15 @@
 
 All notable changes to the KaraDesk iOS SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.1.0
+
+- Messages from Kara, KaraDesk's AI agent, show their interactive parts: reply buttons, suggested articles, a single question field (text, email, phone, number or a choice from a list) and cards. Answers are sent to KaraDesk, the chosen button is marked, and errors such as an invalid email address show under the question. Tapping a suggested article opens it in the help center inside the messenger.
+- Image attachments are shown at their own shape, up to 384pt tall, and several images appear as a grid of square thumbnails. Videos show their first frame, a play button and their length.
+- Tapping an attachment opens it inside the messenger: images in a full-screen viewer with zoom, swiping between images and sharing (including Save Image), videos in the system player, and other files in Quick Look after downloading. The web view is only used when a file can't be opened.
+- File sizes are written the same way as the web messenger, for example "1.5 MB".
+- Messages that are only buttons or a card show a useful preview in the conversation list and in-app notifications.
+- The home screen's reply time reads "We typically reply in a few minutes" for every reply-time setting.
+
 ## 1.0.0
 
 - Errors are explained instead of leaving the messenger spinning. Requests fail right away when the device is offline and give up after 20 seconds otherwise, so sending a message never hangs.

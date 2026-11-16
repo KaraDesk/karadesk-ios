@@ -37,7 +37,7 @@ enum Fixtures {
         "show_help": true,
         "help_center": { "id": 4, "name": "Help", "url": "https://help.example.com", "article_reactions": true },
         "help_centers": [{ "id": 4, "name": "Help", "url": "https://help.example.com" }],
-        "availability": { "open": false, "reply_time": "a few hours", "next_open_at": "2026-11-13T14:00:00Z" },
+        "availability": { "open": false, "reply_time": "in a few hours", "next_open_at": "2026-11-13T14:00:00Z" },
         "attachments": { "enabled": true, "max_bytes": 26214400, "accept": [".png", ".pdf"] },
         "a_future_setting": { "nested": true }
       },

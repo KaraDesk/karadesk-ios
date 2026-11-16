@@ -4,6 +4,7 @@ struct ChatView: View {
     let store: MessengerStore
     let router: MessengerRouter
     @State private var model: ChatModel
+    @State private var browserURL: URL?
 
     init(store: MessengerStore, router: MessengerRouter, conversationID: Int?, initialDraft: String?) {
         self.store = store
@@ -28,6 +29,10 @@ struct ChatView: View {
                 }
             }
             .toolbar(.hidden, for: .tabBar)
+            .sheet(item: $browserURL) { url in
+                SafariView(url: url)
+                    .ignoresSafeArea()
+            }
             .task { await model.load() }
         .onDisappear { model.disappear() }
     }
@@ -87,7 +92,8 @@ struct ChatView: View {
                             onOpenArticle: openArticle,
                             onRate: { message, rating, remark in
                                 await model.rate(message, rating: rating, remark: remark)
-                            }
+                            },
+                            components: componentHandlers
                         )
                     }
 
@@ -121,6 +127,32 @@ struct ChatView: View {
 
     private func openArticle(_ article: MessageAttachment.Article) {
         router.push(.article(helpCenterID: article.helpCenterID, articleID: article.articleID))
+    }
+
+    private var componentHandlers: ComponentHandlers {
+        ComponentHandlers(
+            interact: { message, interaction in
+                await model.interact(with: message, interaction)
+            },
+            openLink: { message, interaction, url in
+                browserURL = url
+                model.openLink(in: message, interaction)
+            },
+            openArticle: openComponentArticle
+        )
+    }
+
+    private func openComponentArticle(_ article: MessageComponent.Article) {
+        if let articleID = article.articleID,
+           let helpCenterID = article.helpCenterID,
+           store.settings?.helpCenter(id: helpCenterID) != nil {
+            router.push(.article(helpCenterID: helpCenterID, articleID: articleID))
+            return
+        }
+
+        if let url = article.url {
+            browserURL = url
+        }
     }
 
     // MARK: Footer

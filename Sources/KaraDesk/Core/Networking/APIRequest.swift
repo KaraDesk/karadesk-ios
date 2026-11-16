@@ -65,6 +65,12 @@ extension APIRequest where Response == Message {
     }
 }
 
+extension APIRequest where Response == InteractionResult {
+    static func interact(_ interaction: ComponentInteraction, messageID: String, conversationID: Int) -> Self {
+        APIRequest(method: .post, path: "/v1/messenger/conversations/\(conversationID)/messages/\(messageID)/interactions", body: interaction)
+    }
+}
+
 extension APIRequest where Response == Conversation {
     static func markRead(_ conversationID: Int) -> Self {
         APIRequest(method: .post, path: "/v1/messenger/conversations/\(conversationID)/read", body: EmptyBody())

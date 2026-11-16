@@ -167,6 +167,21 @@ final class ChatModel {
         }
     }
 
+    func interact(with message: Message, _ interaction: ComponentInteraction) async -> String? {
+        do {
+            try await store.interact(with: message, interaction)
+            return nil
+        } catch {
+            return error.userMessage
+        }
+    }
+
+    func openLink(in message: Message, _ interaction: ComponentInteraction) {
+        Task {
+            try? await store.interact(with: message, interaction)
+        }
+    }
+
     // MARK: Attachments
 
     func addFile(at url: URL) {

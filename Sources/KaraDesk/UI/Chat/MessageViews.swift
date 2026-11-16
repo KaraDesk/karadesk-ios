@@ -33,12 +33,16 @@ extension Message {
     var isRenderable: Bool {
         switch kind {
         case .comment, .replyTime:
-            return !body.isEmpty || !attachments.isEmpty
+            return !body.isEmpty || !attachments.isEmpty || hasComponents
         case .csat:
             return metadata != nil
         case .other:
             return false
         }
+    }
+
+    var hasComponents: Bool {
+        components.contains(where: \.isRenderable)
     }
 }
 
@@ -46,6 +50,7 @@ struct MessageGroupView: View {
     let group: MessageGroup
     let onOpenArticle: (MessageAttachment.Article) -> Void
     let onRate: (Message, Int?, String?) async -> Void
+    let components: ComponentHandlers
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -66,7 +71,8 @@ struct MessageGroupView: View {
                         mine: group.isMine,
                         tail: index == group.messages.count - 1,
                         onOpenArticle: onOpenArticle,
-                        onRate: onRate
+                        onRate: onRate,
+                        components: components
                     )
                 }
 
@@ -117,6 +123,7 @@ private struct MessageView: View {
     let tail: Bool
     let onOpenArticle: (MessageAttachment.Article) -> Void
     let onRate: (Message, Int?, String?) async -> Void
+    let components: ComponentHandlers
 
     @Environment(\.karaDeskTheme) private var theme
 
@@ -135,12 +142,16 @@ private struct MessageView: View {
                         .padding(.vertical, 9)
                         .background(
                             mine ? AnyShapeStyle(theme.accent) : AnyShapeStyle(Color(uiColor: .secondarySystemBackground)),
-                            in: BubbleShape(mine: mine, tail: tail && message.attachments.isEmpty)
+                            in: BubbleShape(mine: mine, tail: tail && message.attachments.isEmpty && !message.hasComponents)
                         )
                 }
 
-                ForEach(Array(message.attachments.enumerated()), id: \.offset) { _, attachment in
-                    AttachmentView(attachment: attachment, onOpenArticle: onOpenArticle)
+                if !message.attachments.isEmpty {
+                    MessageAttachmentsView(attachments: message.attachments, mine: mine, onOpenArticle: onOpenArticle)
+                }
+
+                if !mine, message.hasComponents {
+                    MessageComponentsView(message: message, handlers: components)
                 }
             }
         }
