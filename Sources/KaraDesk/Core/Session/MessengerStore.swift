@@ -32,6 +32,7 @@ final class MessengerStore {
     @ObservationIgnored var onIncomingMessage: ((Message) -> Void)?
     @ObservationIgnored var onUnreadWaiting: ((Conversation, Conversation.Preview) -> Void)?
     @ObservationIgnored var onUnreadCountChange: ((Int) -> Void)?
+    @ObservationIgnored let events: EventQueue
 
     @ObservationIgnored private let client: APIClient
     @ObservationIgnored private let identity: IdentityStore
@@ -59,6 +60,7 @@ final class MessengerStore {
         self.identity = identity
         self.deviceProvider = device
         self.user = identity.user()
+        self.events = EventQueue(spaceID: spaceID, appID: appID, client: client)
     }
 
     var unreadConversationCount: Int {
@@ -209,6 +211,7 @@ final class MessengerStore {
             bootTask = nil
             boot = response
             phase = .ready
+            events.setToken(response.token)
             connectRealtime(token: response.token)
             Log.session.debug("Messenger session started")
             Task { await registerPushToken() }
@@ -570,6 +573,8 @@ final class MessengerStore {
     }
 
     private func reset() {
+        events.setToken(nil)
+        events.flushSoon()
         generation += 1
         bootTask?.cancel()
         bootTask = nil

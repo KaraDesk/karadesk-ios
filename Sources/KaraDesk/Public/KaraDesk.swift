@@ -108,6 +108,7 @@ public enum KaraDesk {
                 guard let store = KaraDesk.store else {
                     return
                 }
+                store.events.flushSoon()
                 Task {
                     await store.resumeRealtime()
                     await store.refreshAndAnnounce()
@@ -122,6 +123,7 @@ public enum KaraDesk {
         ) { _ in
             MainActor.assumeIsolated {
                 KaraDesk.store?.suspendRealtime()
+                KaraDesk.store?.events.flushInBackground()
             }
         }
 

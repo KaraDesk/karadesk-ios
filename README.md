@@ -26,7 +26,7 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/KaraDesk/karadesk-ios", from: "1.1.1"),
+    .package(url: "https://github.com/KaraDesk/karadesk-ios", from: "1.2.0"),
 ],
 targets: [
     .target(name: "YourApp", dependencies: [

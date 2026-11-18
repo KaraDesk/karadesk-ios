@@ -1,3 +1,4 @@
+import Foundation
 import Network
 import Observation
 
@@ -5,6 +6,7 @@ import Observation
 @Observable
 final class NetworkMonitor {
     static let shared = NetworkMonitor()
+    static let didReconnectNotification = Notification.Name("KaraDeskNetworkDidReconnect")
 
     var isOnline = true
 
@@ -17,6 +19,10 @@ final class NetworkMonitor {
             Task { @MainActor in
                 if self?.isOnline != online {
                     self?.isOnline = online
+
+                    if online {
+                        NotificationCenter.default.post(name: NetworkMonitor.didReconnectNotification, object: nil)
+                    }
                 }
             }
         }

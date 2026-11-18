@@ -2,6 +2,11 @@
 
 All notable changes to the KaraDesk iOS SDK are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## 1.2.0
+
+- Track what people do in your app with `KaraDesk.trackEvent(_:metadata:)`, for example `KaraDesk.trackEvent("Placed order", metadata: ["total": 49.99, "items": [["sku": "A-100", "quantity": 2]]])`. Events appear on the person's profile in KaraDesk with how many times they did it and when. Metadata can hold text, numbers, true/false values, dates, lists and groups of values.
+- Events are saved on the device (up to 1,000) and sent in batches: after 20 events, every 30 seconds, when your app goes to the background and when the connection comes back. Events tracked offline are sent later, failed sends are retried with increasing waits, and each event stays with whoever was signed in when it was tracked.
+
 ## 1.1.1
 
 - The share sheet for images only offers Save Image when your app's Info.plist includes `NSPhotoLibraryAddUsageDescription`. Before, tapping Save Image in an app without that key ended the app. Add the key if you want people to be able to save images from the messenger.
